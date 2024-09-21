@@ -1,16 +1,18 @@
 mod color;
+mod point;
 mod ray;
+mod shapes;
 mod vec3;
 
 use color::Color;
+use point::Point;
 use ray::Ray;
+use shapes::{Hittable, Sphere};
 use vec3::Vec3;
-
-type Point = Vec3;
 
 fn main() {
     let desired_aspect_ratio = 16.0 / 9.0;
-    let image_width = 400;
+    let image_width = 800;
     let image_height = (image_width as f64 / desired_aspect_ratio) as u32;
     let image_height = image_height.clamp(1, u32::MAX);
 
@@ -51,6 +53,7 @@ fn main() {
 
 fn ray_color(ray: &Ray) -> Color {
     let center = Vec3::new(0.0, 0.0, -1.0);
+    let sphere = Sphere::new(center, 0.5);
     let t = hit_sphere(&center, 0.5, ray);
     if let Some(t) = t {
         let normal = (ray.at(t) - center).unit_vector();
@@ -64,13 +67,13 @@ fn ray_color(ray: &Ray) -> Color {
 
 fn hit_sphere(center: &Point, radius: f64, ray: &Ray) -> Option<f64> {
     let oc = *center - ray.origin;
-    let a = ray.direction.dot(ray.direction);
-    let b = -2.0 * ray.direction.dot(oc);
+    let a = ray.direction.length_squared();
+    let h = ray.direction.dot(oc);
     let c = oc.dot(oc) - radius * radius;
-    let discriminant = b * b - 4.0 * a * c;
+    let discriminant = h * h - a * c;
     if discriminant < 0.0 {
         None
     } else {
-        Some((-b - discriminant.sqrt()) / (2.0 * a))
+        Some((h - discriminant.sqrt()) / (2.0 * a))
     }
 }
