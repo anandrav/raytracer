@@ -1,14 +1,14 @@
 use crate::vec3::Vec3;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Color {
-    pub r: u8,
-    pub g: u8,
-    pub b: u8,
+pub(crate) struct Color {
+    pub(crate) r: u8,
+    pub(crate) g: u8,
+    pub(crate) b: u8,
 }
 
 impl Color {
-    pub fn new(r: u8, g: u8, b: u8) -> Self {
+    pub(crate) fn new(r: u8, g: u8, b: u8) -> Self {
         Self { r, g, b }
     }
 }

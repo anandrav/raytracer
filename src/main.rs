@@ -1,20 +1,27 @@
 mod color;
+mod interval;
 mod point;
 mod ray;
 mod shapes;
 mod vec3;
 
 use color::Color;
+use interval::Interval;
 use point::Point;
 use ray::Ray;
-use shapes::{Hittable, Sphere};
+use shapes::{Hittable, Sphere, World};
 use vec3::Vec3;
 
 fn main() {
     let desired_aspect_ratio = 16.0 / 9.0;
-    let image_width = 800;
+    let image_width = 400;
     let image_height = (image_width as f64 / desired_aspect_ratio) as u32;
     let image_height = image_height.clamp(1, u32::MAX);
+
+    // World
+    let mut world: World = World::new();
+    world.add(Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5));
+    world.add(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0));
 
     // Camera
     let focal_length = 1.0;
@@ -44,36 +51,23 @@ fn main() {
             let ray_direction = pixel_center - camera_center;
             let ray = Ray::new(camera_center, ray_direction);
 
-            let color = ray_color(&ray);
+            let color = ray_color(&ray, &world);
             println!("{}", color);
         }
     }
     eprintln!("\rDone.                 ");
 }
 
-fn ray_color(ray: &Ray) -> Color {
-    let center = Vec3::new(0.0, 0.0, -1.0);
-    let sphere = Sphere::new(center, 0.5);
-    let t = hit_sphere(&center, 0.5, ray);
-    if let Some(t) = t {
-        let normal = (ray.at(t) - center).unit_vector();
-        return Color::from(normal + Vec3::new(1.0, 1.0, 1.0) * 0.5);
+fn ray_color(ray: &Ray, world: &World) -> Color {
+    // let center = Vec3::new(0.0, 0.0, -1.0);
+    // let sphere = Sphere::new(center, 0.5);
+    // let t = hit_sphere(&center, 0.5, ray);
+    if let Some(hit) = world.hit(ray, Interval::new(0.0, f64::INFINITY)) {
+        return Color::from(hit.normal + Vec3::new(1.0, 1.0, 1.0) * 0.5);
     }
+
     let unit_direction = ray.direction.unit_vector();
     let y_direction = unit_direction.y;
     let a = 0.5 * (y_direction + 1.0);
     Color::from(Vec3::new(1.0, 1.0, 1.0) * (1.0 - a) + Vec3::new(0.5, 0.7, 1.0) * a)
-}
-
-fn hit_sphere(center: &Point, radius: f64, ray: &Ray) -> Option<f64> {
-    let oc = *center - ray.origin;
-    let a = ray.direction.length_squared();
-    let h = ray.direction.dot(oc);
-    let c = oc.dot(oc) - radius * radius;
-    let discriminant = h * h - a * c;
-    if discriminant < 0.0 {
-        None
-    } else {
-        Some((h - discriminant.sqrt()) / (2.0 * a))
-    }
 }

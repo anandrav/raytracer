@@ -1,30 +1,30 @@
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub};
 
 #[derive(Debug, Copy, Clone)]
-pub struct Vec3 {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
+pub(crate) struct Vec3 {
+    pub(crate) x: f64,
+    pub(crate) y: f64,
+    pub(crate) z: f64,
 }
 
 impl Vec3 {
-    pub fn new(x: f64, y: f64, z: f64) -> Self {
+    pub(crate) fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
     }
 
-    pub fn length(&self) -> f64 {
+    pub(crate) fn length(&self) -> f64 {
         self.length_squared().sqrt()
     }
 
-    pub fn length_squared(&self) -> f64 {
+    pub(crate) fn length_squared(&self) -> f64 {
         self.x * self.x + self.y * self.y + self.z * self.z
     }
 
-    pub fn dot(&self, other: Self) -> f64 {
+    pub(crate) fn dot(&self, other: Self) -> f64 {
         self.x * other.x + self.y * other.y + self.z * other.z
     }
 
-    pub fn cross(&self, other: Self) -> Self {
+    pub(crate) fn cross(&self, other: Self) -> Self {
         Self {
             x: self.y * other.z - self.z * other.y,
             y: self.z * other.x - self.x * other.z,
@@ -32,7 +32,7 @@ impl Vec3 {
         }
     }
 
-    pub fn unit_vector(&self) -> Self {
+    pub(crate) fn unit_vector(&self) -> Self {
         *self / self.length()
     }
 }
