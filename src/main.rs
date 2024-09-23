@@ -1,7 +1,7 @@
 mod camera;
 mod color;
 mod interval;
-mod point;
+mod common;
 mod ray;
 mod scene;
 mod vec3;
@@ -9,7 +9,7 @@ mod vec3;
 use camera::Camera;
 use color::Color;
 use interval::Interval;
-use point::Point;
+use common::Point;
 use ray::Ray;
 use scene::{Hittable, Sphere, World};
 use vec3::Vec3;

@@ -1,5 +1,5 @@
 use crate::interval::Interval;
-use crate::point::Point;
+use crate::common::Point;
 use crate::ray::Ray;
 use crate::vec3::Vec3;
 

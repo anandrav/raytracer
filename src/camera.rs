@@ -1,6 +1,7 @@
 use crate::color::Color;
+use crate::common::random_f64;
+use crate::common::Point;
 use crate::interval::Interval;
-use crate::point::Point;
 use crate::ray::Ray;
 use crate::scene::World;
 use crate::vec3::Vec3;
@@ -58,9 +59,9 @@ impl Camera {
             eprint!("\rScanlines remaining: {} ", (self.image_height - j));
             for i in 0..self.image_width {
                 let mut color = Vec3::new(0.0, 0.0, 0.0);
-                for sample in 0..self.samples_per_pixel {
+                for _ in 0..self.samples_per_pixel {
                     let ray = self.get_ray(i as i32, j as i32);
-                    color += self.ray_color(&ray, world);
+                    color += ray_color(&ray, world);
                 }
                 println!("{}", Color::from(color * self.pixel_samples_scale));
 
@@ -77,17 +78,6 @@ impl Camera {
         eprintln!("\rDone.                 ");
     }
 
-    fn ray_color(&self, ray: &Ray, world: &World) -> Vec3 {
-        if let Some(hit) = world.hit(ray, Interval::new(0.0, f64::INFINITY)) {
-            return hit.normal + Vec3::new(1.0, 1.0, 1.0) * 0.5;
-        }
-
-        let unit_direction = ray.direction.unit_vector();
-        let y_direction = unit_direction.y;
-        let a = 0.5 * (y_direction + 1.0);
-        Vec3::new(1.0, 1.0, 1.0) * (1.0 - a) + Vec3::new(0.5, 0.7, 1.0) * a
-    }
-
     fn get_ray(&self, i: i32, j: i32) -> Ray {
         let offset = sample_square();
         let pixel_sample = self.pixel00_loc
@@ -100,10 +90,18 @@ impl Camera {
     }
 }
 
-fn sample_square() -> Vec3 {
-    Vec3::new(random_f64() - 0.5, random_f64() - 0.5, 0.0)
+fn ray_color(ray: &Ray, world: &World) -> Vec3 {
+    if let Some(hit) = world.hit(ray, Interval::new(0.0, f64::INFINITY)) {
+        let direction = Vec3::random_unit_in_hemisphere(hit.normal);
+        return ray_color(&Ray::new(hit.p, direction), world) * 0.5;
+    }
+
+    let unit_direction = ray.direction.unit_vector();
+    let y_direction = unit_direction.y;
+    let a = 0.5 * (y_direction + 1.0);
+    Vec3::new(1.0, 1.0, 1.0) * (1.0 - a) + Vec3::new(0.5, 0.7, 1.0) * a
 }
 
-fn random_f64() -> f64 {
-    rand::random::<f64>()
+fn sample_square() -> Vec3 {
+    Vec3::new(random_f64() - 0.5, random_f64() - 0.5, 0.0)
 }
