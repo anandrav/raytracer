@@ -29,4 +29,8 @@ impl Interval {
     pub(crate) fn surrounds(&self, t: f64) -> bool {
         self.min < t && t < self.max
     }
+
+    pub(crate) fn clamp(&self, n: f64) -> f64 {
+        n.clamp(self.min, self.max)
+    }
 }

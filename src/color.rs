@@ -1,3 +1,5 @@
+use std::convert;
+
 use crate::vec3::Vec3;
 
 #[derive(Debug, Clone, Copy)]
@@ -15,9 +17,10 @@ impl Color {
 
 impl From<Vec3> for Color {
     fn from(v: Vec3) -> Self {
-        let r = (255.999 * v.x) as u8;
-        let g = (255.999 * v.y) as u8;
-        let b = (255.999 * v.z) as u8;
+        let convert = |f: f64| (255.999 * f.clamp(0.0, 0.999)) as u8;
+        let r = convert(v.x);
+        let g = convert(v.y);
+        let b = convert(v.z);
         Self { r, g, b }
     }
 }

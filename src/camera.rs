@@ -12,6 +12,8 @@ pub struct Camera {
     pixel00_loc: Point,
     pixel_delta_u: Vec3,
     pixel_delta_v: Vec3,
+    samples_per_pixel: u16,
+    pixel_samples_scale: f64,
 }
 
 impl Camera {
@@ -34,6 +36,8 @@ impl Camera {
             center - Vec3::new(0.0, 0.0, focal_length) - viewport_u / 2.0 - viewport_v / 2.0;
         let pixel00_loc = viewport_upper_left + (pixel_delta_u + pixel_delta_v) * 0.5;
 
+        let samples_per_pixel = 100;
+
         Self {
             aspect_ratio,
             image_width,
@@ -42,6 +46,8 @@ impl Camera {
             pixel00_loc,
             pixel_delta_u,
             pixel_delta_v,
+            samples_per_pixel,
+            pixel_samples_scale: 1.0 / samples_per_pixel as f64,
         }
     }
 
@@ -51,27 +57,53 @@ impl Camera {
         for j in 0..self.image_height {
             eprint!("\rScanlines remaining: {} ", (self.image_height - j));
             for i in 0..self.image_width {
-                let pixel_center = self.pixel00_loc
-                    + self.pixel_delta_u * i as f64
-                    + self.pixel_delta_v * j as f64;
-                let ray_direction = pixel_center - self.center;
-                let ray = Ray::new(self.center, ray_direction);
+                let mut color = Vec3::new(0.0, 0.0, 0.0);
+                for sample in 0..self.samples_per_pixel {
+                    let ray = self.get_ray(i as i32, j as i32);
+                    color += self.ray_color(&ray, world);
+                }
+                println!("{}", Color::from(color * self.pixel_samples_scale));
 
-                let color = self.ray_color(&ray, world);
-                println!("{}", color);
+                // let pixel_center = self.pixel00_loc
+                //     + self.pixel_delta_u * i as f64
+                //     + self.pixel_delta_v * j as f64;
+                // let ray_direction = pixel_center - self.center;
+                // let ray = Ray::new(self.center, ray_direction);
+
+                // let color = self.ray_color(&ray, world);
+                // println!("{}", color);
             }
         }
         eprintln!("\rDone.                 ");
     }
 
-    fn ray_color(&self, ray: &Ray, world: &World) -> Color {
+    fn ray_color(&self, ray: &Ray, world: &World) -> Vec3 {
         if let Some(hit) = world.hit(ray, Interval::new(0.0, f64::INFINITY)) {
-            return Color::from(hit.normal + Vec3::new(1.0, 1.0, 1.0) * 0.5);
+            return hit.normal + Vec3::new(1.0, 1.0, 1.0) * 0.5;
         }
 
         let unit_direction = ray.direction.unit_vector();
         let y_direction = unit_direction.y;
         let a = 0.5 * (y_direction + 1.0);
-        Color::from(Vec3::new(1.0, 1.0, 1.0) * (1.0 - a) + Vec3::new(0.5, 0.7, 1.0) * a)
+        Vec3::new(1.0, 1.0, 1.0) * (1.0 - a) + Vec3::new(0.5, 0.7, 1.0) * a
     }
+
+    fn get_ray(&self, i: i32, j: i32) -> Ray {
+        let offset = sample_square();
+        let pixel_sample = self.pixel00_loc
+            + (self.pixel_delta_u * (i as f64 + offset.x))
+            + (self.pixel_delta_v * (j as f64 + offset.y));
+
+        let origin = self.center;
+        let direction = pixel_sample - self.center;
+        Ray { origin, direction }
+    }
+}
+
+fn sample_square() -> Vec3 {
+    Vec3::new(random_f64() - 0.5, random_f64() - 0.5, 0.0)
+}
+
+fn random_f64() -> f64 {
+    rand::random::<f64>()
 }
