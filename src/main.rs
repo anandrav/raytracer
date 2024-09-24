@@ -6,7 +6,7 @@ mod material;
 mod ray;
 mod scene;
 mod vec3;
-use std::{env, rc::Rc};
+use std::{env, sync::Arc};
 
 use camera::Camera;
 use color::Color;
@@ -30,23 +30,23 @@ fn main() {
     let camera = Camera::new(aspect_ratio, image_width, samples_per_pixel);
 
     // World
-    let material_ground = Rc::new(Material {
+    let material_ground = Arc::new(Material {
         kind: material::MaterialKind::Lambertian,
         albedo: Vec3::new(0.8, 0.8, 0.0),
     });
-    let material_center = Rc::new(Material {
+    let material_center = Arc::new(Material {
         kind: material::MaterialKind::Lambertian,
         albedo: Vec3::new(0.1, 0.2, 0.5),
     });
-    let material_left = Rc::new(Material {
+    let material_left = Arc::new(Material {
         kind: material::MaterialKind::Dielectric { ref_idx: 1.5 },
         albedo: Vec3::new(0.8, 0.8, 0.8),
     });
-    let material_bubble = Rc::new(Material {
+    let material_bubble = Arc::new(Material {
         kind: material::MaterialKind::Dielectric { ref_idx: 1.0 / 1.5 },
         albedo: Vec3::new(0.8, 0.8, 0.8),
     });
-    let material_right = Rc::new(Material {
+    let material_right = Arc::new(Material {
         kind: material::MaterialKind::Metal { fuzz: 1.0 },
         albedo: Vec3::new(0.8, 0.6, 0.2),
     });

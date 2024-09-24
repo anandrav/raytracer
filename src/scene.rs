@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::common::Point;
 use crate::interval::Interval;
@@ -11,11 +12,11 @@ pub(crate) struct HitRecord {
     pub(crate) normal: Vec3,
     pub(crate) t: f64,
     pub(crate) front_face: bool,
-    pub(crate) material: Rc<Material>,
+    pub(crate) material: Arc<Material>,
 }
 
 impl HitRecord {
-    pub(crate) fn new(ray: &Ray, p: Point, normal: Vec3, t: f64, material: Rc<Material>) -> Self {
+    pub(crate) fn new(ray: &Ray, p: Point, normal: Vec3, t: f64, material: Arc<Material>) -> Self {
         let front_face = ray.direction.dot(normal) < 0.0;
         let normal = if front_face { normal } else { -normal };
         Self {
@@ -35,11 +36,11 @@ pub(crate) trait Hittable {
 pub(crate) struct Sphere {
     center: Point,
     radius: f64,
-    material: Rc<Material>,
+    material: Arc<Material>,
 }
 
 impl Sphere {
-    pub(crate) fn new(center: Point, radius: f64, material: Rc<Material>) -> Self {
+    pub(crate) fn new(center: Point, radius: f64, material: Arc<Material>) -> Self {
         Self {
             center,
             radius,
@@ -75,7 +76,7 @@ impl Hittable for Sphere {
 }
 
 pub(crate) struct World {
-    objects: Vec<Box<dyn Hittable>>,
+    objects: Vec<Box<dyn Hittable + Sync>>,
 }
 
 impl World {
@@ -85,7 +86,7 @@ impl World {
         }
     }
 
-    pub(crate) fn add(&mut self, object: impl Hittable + 'static) {
+    pub(crate) fn add(&mut self, object: impl Hittable + 'static + Sync) {
         self.objects.push(Box::new(object));
     }
 

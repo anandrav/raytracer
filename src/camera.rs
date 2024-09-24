@@ -1,3 +1,7 @@
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
+
 use crate::color::Color;
 use crate::common::random_f64;
 use crate::common::Point;
@@ -5,6 +9,7 @@ use crate::interval::Interval;
 use crate::ray::Ray;
 use crate::scene::World;
 use crate::vec3::Vec3;
+use rayon::prelude::*;
 pub struct Camera {
     aspect_ratio: f64,
     image_width: u32,
@@ -51,19 +56,56 @@ impl Camera {
     }
 
     pub fn render(&self, world: &World) {
+        let completed_scanlines = Arc::new(AtomicUsize::new(0));
+
+        let total_scanlines = self.image_height as usize;
+
+        // Spawn a thread to display progress
+        let progress_thread = {
+            let completed_scanlines = completed_scanlines.clone();
+            std::thread::spawn(move || {
+                while completed_scanlines.load(Ordering::Relaxed) < total_scanlines {
+                    let completed = completed_scanlines.load(Ordering::Relaxed);
+                    eprint!(
+                        "\rProgress: {:.1}%",
+                        (completed as f32 / total_scanlines as f32) * 100.0
+                    );
+                    std::thread::sleep(std::time::Duration::from_millis(16));
+                }
+            })
+        };
+
+        // Header for .ppm file
         println!("P3\n{} {}\n255", self.image_width, self.image_height);
 
-        for j in 0..self.image_height {
-            eprint!("\rScanlines remaining: {} ", (self.image_height - j));
-            for i in 0..self.image_width {
-                let mut color = Vec3::new(0.0, 0.0, 0.0);
-                for _ in 0..self.samples_per_pixel {
-                    let ray = self.get_ray(i as i32, j as i32);
-                    color += ray_color(&ray, world);
-                }
-                println!("{}", Color::from(color * self.pixel_samples_scale));
+        let scan_lines: Vec<Vec<Color>> = (0..self.image_height)
+            .into_par_iter()
+            .map(|j| {
+                let scan_line: Vec<Color> = (0..self.image_width)
+                    .map(|i| {
+                        let mut color = Vec3::new(0.0, 0.0, 0.0);
+                        color += (0..self.samples_per_pixel)
+                            .map(|_| {
+                                let ray = self.get_ray(i as i32, j as i32);
+                                ray_color(&ray, world)
+                            })
+                            .sum();
+                        Color::from(color * self.pixel_samples_scale)
+                    })
+                    .collect();
+                // update progress
+                completed_scanlines.fetch_add(1, Ordering::Relaxed);
+                scan_line
+            })
+            .collect();
+
+        for scan_line in scan_lines {
+            for color in scan_line {
+                println!("{}", color);
             }
         }
+
+        progress_thread.join().unwrap();
         eprintln!("\rDone.                 ");
     }
 
@@ -95,8 +137,6 @@ fn ray_color_(ray: &Ray, world: &World, depth: i32) -> Vec3 {
             }
             None => return Vec3::new(0.0, 0.0, 0.0),
         }
-        // let direction = hit.normal + Vec3::random_unit();
-        // return ray_color_(&Ray::new(hit.p, direction), world, depth + 1) * 0.5;
     }
 
     let unit_direction = ray.direction.unit_vector();
