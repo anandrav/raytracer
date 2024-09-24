@@ -18,7 +18,7 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(aspect_ratio: f64, image_width: u32) -> Self {
+    pub fn new(aspect_ratio: f64, image_width: u32, samples_per_pixel: u16) -> Self {
         let image_height = (image_width as f64 / aspect_ratio) as u32;
         let image_height = image_height.clamp(1, u32::MAX);
 
@@ -36,8 +36,6 @@ impl Camera {
         let viewport_upper_left =
             center - Vec3::new(0.0, 0.0, focal_length) - viewport_u / 2.0 - viewport_v / 2.0;
         let pixel00_loc = viewport_upper_left + (pixel_delta_u + pixel_delta_v) * 0.5;
-
-        let samples_per_pixel = 100;
 
         Self {
             aspect_ratio,
@@ -64,15 +62,6 @@ impl Camera {
                     color += ray_color(&ray, world);
                 }
                 println!("{}", Color::from(color * self.pixel_samples_scale));
-
-                // let pixel_center = self.pixel00_loc
-                //     + self.pixel_delta_u * i as f64
-                //     + self.pixel_delta_v * j as f64;
-                // let ray_direction = pixel_center - self.center;
-                // let ray = Ray::new(self.center, ray_direction);
-
-                // let color = self.ray_color(&ray, world);
-                // println!("{}", color);
             }
         }
         eprintln!("\rDone.                 ");
@@ -91,9 +80,23 @@ impl Camera {
 }
 
 fn ray_color(ray: &Ray, world: &World) -> Vec3 {
-    if let Some(hit) = world.hit(ray, Interval::new(0.0, f64::INFINITY)) {
-        let direction = Vec3::random_unit_in_hemisphere(hit.normal);
-        return ray_color(&Ray::new(hit.p, direction), world) * 0.5;
+    ray_color_(ray, world, 0)
+}
+
+fn ray_color_(ray: &Ray, world: &World, depth: i32) -> Vec3 {
+    const MAX_DEPTH: i32 = 50;
+    if depth >= MAX_DEPTH {
+        return Vec3::new(0.0, 0.0, 0.0);
+    }
+    if let Some(hit) = world.hit(ray, Interval::new(0.001, f64::INFINITY)) {
+        match hit.material.scatter(ray, &hit) {
+            Some(scatter) => {
+                return scatter.attenuation * ray_color_(&scatter.scattered, world, depth + 1);
+            }
+            None => return Vec3::new(0.0, 0.0, 0.0),
+        }
+        // let direction = hit.normal + Vec3::random_unit();
+        // return ray_color_(&Ray::new(hit.p, direction), world, depth + 1) * 0.5;
     }
 
     let unit_direction = ray.direction.unit_vector();

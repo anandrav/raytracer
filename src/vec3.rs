@@ -14,42 +14,6 @@ impl Vec3 {
         Self { x, y, z }
     }
 
-    pub(crate) fn random() -> Self {
-        Self {
-            x: random_f64(),
-            y: random_f64(),
-            z: random_f64(),
-        }
-    }
-
-    pub(crate) fn random_in_range(min: f64, max: f64) -> Self {
-        Self {
-            x: random_f64_in_range(min, max),
-            y: random_f64_in_range(min, max),
-            z: random_f64_in_range(min, max),
-        }
-    }
-
-    pub(crate) fn random_unit() -> Self {
-        loop {
-            let p = Self::random_in_range(-1.0, 1.0);
-            let length_squared = p.length_squared();
-            let safe_min: f64 = 1e-160;
-            if safe_min < length_squared && length_squared <= 1.0 {
-                return p;
-            }
-        }
-    }
-
-    pub(crate) fn random_unit_in_hemisphere(normal: Self) -> Self {
-        let in_unit_sphere = Self::random_unit();
-        if in_unit_sphere.dot(normal) > 0.0 {
-            in_unit_sphere
-        } else {
-            -in_unit_sphere
-        }
-    }
-
     pub(crate) fn length(&self) -> f64 {
         self.length_squared().sqrt()
     }
@@ -72,6 +36,61 @@ impl Vec3 {
 
     pub(crate) fn unit_vector(&self) -> Self {
         *self / self.length()
+    }
+
+    pub(crate) fn is_near_zero(&self) -> bool {
+        let eps = 1e-8;
+        self.x.abs() < eps && self.y.abs() < eps && self.z.abs() < eps
+    }
+}
+
+impl Vec3 {
+    pub(crate) fn random() -> Self {
+        Self {
+            x: random_f64(),
+            y: random_f64(),
+            z: random_f64(),
+        }
+    }
+
+    pub(crate) fn random_in_range(min: f64, max: f64) -> Self {
+        Self {
+            x: random_f64_in_range(min, max),
+            y: random_f64_in_range(min, max),
+            z: random_f64_in_range(min, max),
+        }
+    }
+
+    pub(crate) fn random_unit() -> Self {
+        loop {
+            let p = Self::random_in_range(-1.0, 1.0);
+            let length_squared = p.length_squared();
+            let eps: f64 = 1e-160;
+            if eps < length_squared && length_squared <= 1.0 {
+                return p;
+            }
+        }
+    }
+
+    pub(crate) fn random_unit_in_hemisphere(normal: Self) -> Self {
+        let in_unit_sphere = Self::random_unit();
+        if in_unit_sphere.dot(normal) > 0.0 {
+            in_unit_sphere
+        } else {
+            -in_unit_sphere
+        }
+    }
+
+    pub(crate) fn reflect(&self, normal: Vec3) -> Vec3 {
+        *self - 2.0 * normal * self.dot(normal)
+    }
+
+    pub(crate) fn refract(&self, normal: Vec3, etai_over_etat: f64) -> Vec3 {
+        let cos_theta = (-*self).dot(normal);
+        let cos_theta = cos_theta.min(1.0);
+        let r_out_perp = etai_over_etat * (*self + cos_theta * normal);
+        let r_out_parallel = -(1.0 - r_out_perp.length_squared()).abs().sqrt() * normal;
+        r_out_perp + r_out_parallel
     }
 }
 
@@ -136,6 +155,14 @@ impl Mul<f64> for Vec3 {
             y: self.y * t,
             z: self.z * t,
         }
+    }
+}
+
+impl Mul<Vec3> for f64 {
+    type Output = Vec3;
+
+    fn mul(self, v: Vec3) -> Self::Output {
+        v * self
     }
 }
 

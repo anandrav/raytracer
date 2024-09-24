@@ -1,5 +1,8 @@
-use crate::interval::Interval;
+use std::rc::Rc;
+
 use crate::common::Point;
+use crate::interval::Interval;
+use crate::material::Material;
 use crate::ray::Ray;
 use crate::vec3::Vec3;
 
@@ -8,17 +11,19 @@ pub(crate) struct HitRecord {
     pub(crate) normal: Vec3,
     pub(crate) t: f64,
     pub(crate) front_face: bool,
+    pub(crate) material: Rc<Material>,
 }
 
 impl HitRecord {
-    pub(crate) fn new(ray: &Ray, p: Point, normal: Vec3, t: f64) -> Self {
+    pub(crate) fn new(ray: &Ray, p: Point, normal: Vec3, t: f64, material: Rc<Material>) -> Self {
         let front_face = ray.direction.dot(normal) < 0.0;
         let normal = if front_face { normal } else { -normal };
         Self {
             p,
             normal,
             t,
-            front_face: false,
+            front_face,
+            material,
         }
     }
 }
@@ -30,11 +35,16 @@ pub(crate) trait Hittable {
 pub(crate) struct Sphere {
     center: Point,
     radius: f64,
+    material: Rc<Material>,
 }
 
 impl Sphere {
-    pub(crate) fn new(center: Point, radius: f64) -> Self {
-        Self { center, radius }
+    pub(crate) fn new(center: Point, radius: f64, material: Rc<Material>) -> Self {
+        Self {
+            center,
+            radius,
+            material,
+        }
     }
 }
 
@@ -60,7 +70,7 @@ impl Hittable for Sphere {
         let t = root;
         let p = ray.at(t);
         let normal = (p - self.center) / self.radius;
-        Some(HitRecord::new(ray, p, normal, t))
+        Some(HitRecord::new(ray, p, normal, t, self.material.clone()))
     }
 }
 

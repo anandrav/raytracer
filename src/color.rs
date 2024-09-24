@@ -17,7 +17,16 @@ impl Color {
 
 impl From<Vec3> for Color {
     fn from(v: Vec3) -> Self {
-        let convert = |f: f64| (255.999 * f.clamp(0.0, 0.999)) as u8;
+        let to_gamma = |f: f64| {
+            if f > 0.0 {
+                f.sqrt()
+            } else {
+                0.0
+            }
+        };
+        let to_int = |f: f64| (255.999 * f.clamp(0.0, 0.999)) as u8;
+        let convert = |f: f64| to_int(to_gamma(f));
+
         let r = convert(v.x);
         let g = convert(v.y);
         let b = convert(v.z);
