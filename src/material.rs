@@ -1,4 +1,4 @@
-use crate::{ray::Ray, scene::HitRecord, vec3::Vec3};
+use crate::{common::random_f64, ray::Ray, scene::HitRecord, vec3::Vec3};
 
 pub struct Material {
     pub kind: MaterialKind,
@@ -51,9 +51,19 @@ impl Material {
                 };
 
                 let unit_direction = ray_in.direction.unit_vector();
-                let refracted = unit_direction.refract(hit.normal, ref_idx);
+                let cos_theta = (-unit_direction).dot(hit.normal);
+                let cos_theta = cos_theta.min(1.0);
+                let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
 
-                let scattered = Ray::new(hit.p, refracted);
+                let cannot_refract = ref_idx * sin_theta > 1.0;
+                let direction = if cannot_refract || reflectance(cos_theta, ref_idx) > random_f64()
+                {
+                    unit_direction.reflect(hit.normal)
+                } else {
+                    unit_direction.refract(hit.normal, ref_idx)
+                };
+
+                let scattered = Ray::new(hit.p, direction);
 
                 Some(Scatter {
                     attenuation,
@@ -62,4 +72,10 @@ impl Material {
             }
         }
     }
+}
+
+fn reflectance(cosine: f64, ref_idx: f64) -> f64 {
+    let r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
+    let r0 = r0 * r0;
+    r0 + (1.0 - r0) * (1.0 - cosine).powi(5)
 }

@@ -42,6 +42,10 @@ fn main() {
         kind: material::MaterialKind::Dielectric { ref_idx: 1.5 },
         albedo: Vec3::new(0.8, 0.8, 0.8),
     });
+    let material_bubble = Rc::new(Material {
+        kind: material::MaterialKind::Dielectric { ref_idx: 1.0 / 1.5 },
+        albedo: Vec3::new(0.8, 0.8, 0.8),
+    });
     let material_right = Rc::new(Material {
         kind: material::MaterialKind::Metal { fuzz: 1.0 },
         albedo: Vec3::new(0.8, 0.6, 0.2),
@@ -55,6 +59,11 @@ fn main() {
     ));
     world.add(Sphere::new(Vec3::new(0.0, 0.0, -1.2), 0.5, material_center));
     world.add(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, material_left));
+    world.add(Sphere::new(
+        Vec3::new(-1.0, 0.0, -1.0),
+        0.4,
+        material_bubble,
+    ));
     world.add(Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5, material_right));
 
     camera.render(&world);
