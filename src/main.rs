@@ -9,12 +9,9 @@ mod vec3;
 use std::{env, sync::Arc};
 
 use camera::Camera;
-use color::Color;
-use common::Point;
-use interval::Interval;
+
 use material::Material;
-use ray::Ray;
-use scene::{Hittable, Sphere, World};
+use scene::{Sphere, World};
 use vec3::Vec3;
 
 fn main() {
@@ -27,7 +24,17 @@ fn main() {
 
     let aspect_ratio = 16.0 / 9.0;
     let image_width = 400;
-    let camera = Camera::new(aspect_ratio, image_width, samples_per_pixel);
+    let camera = Camera::new(
+        aspect_ratio,
+        image_width,
+        samples_per_pixel,
+        Vec3::new(-2.0, 2.0, 1.0),
+        Vec3::new(0.0, 0.0, -1.0),
+        Vec3::new(0.0, 1.0, 0.0),
+        20.0,
+        10.0,
+        3.4,
+    );
 
     // World
     let material_ground = Arc::new(Material {

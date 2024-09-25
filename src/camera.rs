@@ -14,61 +14,111 @@ pub struct Camera {
     aspect_ratio: f64,
     image_width: u32,
     image_height: u32,
-    center: Point,
+
     pixel00_loc: Point,
     pixel_delta_u: Vec3,
     pixel_delta_v: Vec3,
+
     samples_per_pixel: u16,
     pixel_samples_scale: f64,
+
+    center: Point,
+    vertical_fov: f64,
+    look_from: Vec3,
+    look_at: Vec3,
+    up: Vec3,
+
+    u: Vec3,
+    v: Vec3,
+    w: Vec3,
+
+    defocus_angle: f64,
+    defocus_disk_u: Vec3,
+    defocus_disk_v: Vec3,
 }
 
 impl Camera {
-    pub fn new(aspect_ratio: f64, image_width: u32, samples_per_pixel: u16) -> Self {
+    pub fn new(
+        aspect_ratio: f64,
+        image_width: u32,
+        samples_per_pixel: u16,
+        look_from: Vec3,
+        look_at: Vec3,
+        up: Vec3,
+        vertical_fov: f64,
+        defocus_angle: f64,
+        focus_distance: f64,
+    ) -> Self {
         let image_height = (image_width as f64 / aspect_ratio) as u32;
         let image_height = image_height.clamp(1, u32::MAX);
 
-        let center = Point::new(0.0, 0.0, 0.0);
-        let focal_length = 1.0;
-        let viewport_height = 2.0;
+        let center = look_from;
+        // let focal_length = (look_from - look_at).length();
+        let w = (look_from - look_at).unit_vector();
+        let u = up.cross(w).unit_vector();
+        let v = w.cross(u);
+
+        let theta = vertical_fov.to_radians();
+        let h = (theta / 2.0).tan();
+        let viewport_height = 2.0 * h * focus_distance;
         let viewport_width = viewport_height * (image_width as f64 / image_height as f64);
 
-        let viewport_u = Vec3::new(viewport_width, 0.0, 0.0);
-        let viewport_v = Vec3::new(0.0, -viewport_height, 0.0);
+        let viewport_u = viewport_width * u;
+        let viewport_v = viewport_height * -v;
 
         let pixel_delta_u = viewport_u / image_width as f64;
         let pixel_delta_v = viewport_v / image_height as f64;
 
         let viewport_upper_left =
-            center - Vec3::new(0.0, 0.0, focal_length) - viewport_u / 2.0 - viewport_v / 2.0;
+            center - (w * focus_distance) - viewport_u / 2.0 - viewport_v / 2.0;
         let pixel00_loc = viewport_upper_left + (pixel_delta_u + pixel_delta_v) * 0.5;
+
+        let defocus_radius = focus_distance * (defocus_angle / 2.0).to_radians().tan();
+        let defocus_disk_u = u * defocus_radius;
+        let defocus_disk_v = v * defocus_radius;
 
         Self {
             aspect_ratio,
             image_width,
             image_height,
-            center,
+
             pixel00_loc,
             pixel_delta_u,
             pixel_delta_v,
+
             samples_per_pixel,
             pixel_samples_scale: 1.0 / samples_per_pixel as f64,
+
+            center,
+            vertical_fov,
+            look_from,
+            look_at,
+            up,
+
+            u,
+            v,
+            w,
+
+            defocus_angle,
+            defocus_disk_u,
+            defocus_disk_v,
         }
     }
 
     pub fn render(&self, world: &World) {
-        let completed_scanlines = Arc::new(AtomicUsize::new(0));
+        let completed_pixels = Arc::new(AtomicUsize::new(0));
 
-        let total_scanlines = self.image_height as usize;
+        let total_pixels = self.image_height as usize * self.image_width as usize;
 
         // Spawn a thread to display progress
         let progress_thread = {
-            let completed_scanlines = completed_scanlines.clone();
+            let completed_scanlines = completed_pixels.clone();
             std::thread::spawn(move || {
-                while completed_scanlines.load(Ordering::Relaxed) < total_scanlines {
+                while completed_scanlines.load(Ordering::Relaxed) < total_pixels {
                     let completed = completed_scanlines.load(Ordering::Relaxed);
                     eprint!(
                         "\rProgress: {:.1}%",
-                        (completed as f32 / total_scanlines as f32) * 100.0
+                        (completed as f32 / total_pixels as f32) * 100.0
                     );
                     std::thread::sleep(std::time::Duration::from_millis(16));
                 }
@@ -81,7 +131,7 @@ impl Camera {
         let scan_lines: Vec<Vec<Color>> = (0..self.image_height)
             .into_par_iter()
             .map(|j| {
-                let scan_line: Vec<Color> = (0..self.image_width)
+                (0..self.image_width)
                     .map(|i| {
                         let mut color = Vec3::new(0.0, 0.0, 0.0);
                         color += (0..self.samples_per_pixel)
@@ -90,12 +140,12 @@ impl Camera {
                                 ray_color(&ray, world)
                             })
                             .sum();
+                        // update progress
+                        completed_pixels.fetch_add(1, Ordering::Relaxed);
+                        // return
                         Color::from(color * self.pixel_samples_scale)
                     })
-                    .collect();
-                // update progress
-                completed_scanlines.fetch_add(1, Ordering::Relaxed);
-                scan_line
+                    .collect()
             })
             .collect();
 
@@ -115,9 +165,18 @@ impl Camera {
             + (self.pixel_delta_u * (i as f64 + offset.x))
             + (self.pixel_delta_v * (j as f64 + offset.y));
 
-        let origin = self.center;
-        let direction = pixel_sample - self.center;
+        let origin = if self.defocus_angle <= 0.0 {
+            self.center
+        } else {
+            self.defocus_disk_sample()
+        };
+        let direction = pixel_sample - origin;
         Ray { origin, direction }
+    }
+    fn defocus_disk_sample(&self) -> Vec3 {
+        // Returns a random point in the camera defocus disk.
+        let p = Vec3::random_in_unit_disk();
+        self.center + (p.x * self.defocus_disk_u) + (p.y * self.defocus_disk_v)
     }
 }
 
