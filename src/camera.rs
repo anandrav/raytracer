@@ -9,6 +9,8 @@ use crate::interval::Interval;
 use crate::ray::Ray;
 use crate::scene::World;
 use crate::vec3::Vec3;
+use image::ImageBuffer;
+use image::Rgb;
 use rayon::prelude::*;
 pub struct Camera {
     aspect_ratio: f64,
@@ -126,7 +128,7 @@ impl Camera {
         };
 
         // Header for .ppm file
-        println!("P3\n{} {}\n255", self.image_width, self.image_height);
+        // println!("P3\n{} {}\n255", self.image_width, self.image_height);
 
         let scan_lines: Vec<Vec<Color>> = (0..self.image_height)
             .into_par_iter()
@@ -149,9 +151,17 @@ impl Camera {
             })
             .collect();
 
+        let mut img = ImageBuffer::new(self.image_width, self.image_height);
+        for (j, scan_line) in scan_lines.iter().enumerate() {
+            for (i, color) in scan_line.iter().enumerate() {
+                img.put_pixel(i as u32, j as u32, Rgb::from([color.r, color.g, color.b]));
+            }
+        }
+        img.save("example.png").unwrap();
+
         for scan_line in scan_lines {
             for color in scan_line {
-                println!("{}", color);
+                // println!("{}", color);
             }
         }
 
