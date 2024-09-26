@@ -157,7 +157,7 @@ impl Camera {
                 img.put_pixel(i as u32, j as u32, Rgb::from([color.r, color.g, color.b]));
             }
         }
-        img.save("example.png").unwrap();
+        img.save("output.png").unwrap();
 
         for scan_line in scan_lines {
             for color in scan_line {
